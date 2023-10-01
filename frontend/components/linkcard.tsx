@@ -80,7 +80,7 @@ export default function LinkCard({link}: { link: ILink }) {
                 </GridCol>
               </Grid>
               {/* </Group> */}
-              <Text size="sm" c="dimmed">{link.page_metadata.description || ''}</Text>
+              <Text size="sm" c="dimmed" lineClamp={3}>{link.page_metadata.description || ''}</Text>
             </Stack>
           </GridCol>
         </Grid>
