@@ -2,7 +2,7 @@
 import { Title, Alert, Space } from "@mantine/core";
 import PageContainer from "@/components/pagecontainer";
 import ItemizeCard from "@/components/itemizecard";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Itemize, listUserItemizes } from "@/util/api";
 
 
@@ -10,17 +10,17 @@ export default function UserPage({ params }: { params: { username: string }}) {
   const [itemizes, setItemizes] = useState<Itemize[] | undefined>(undefined)
   const [listError, setListError] = useState<string | undefined>(undefined)
 
-  async function refreshItemizes() {
+  const refreshItemizes = useCallback(async function() {
     try {
       setItemizes(await listUserItemizes(params.username, ""))
     } catch (error: any) {
       setListError(error.message)
     }
-  }
+  }, [params.username])
 
   useEffect(() => {
     refreshItemizes()
-  }, [])
+  }, [refreshItemizes])
 
   return (
     <PageContainer>

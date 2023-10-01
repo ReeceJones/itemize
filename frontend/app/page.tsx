@@ -6,7 +6,7 @@ import { IconSearch } from "@tabler/icons-react";
 import PageContainer from "@/components/pagecontainer";
 import ItemizeCard from "@/components/itemizecard";
 import { listUserItemizes, createItemize, Itemize } from "@/util/api";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -35,7 +35,7 @@ export default function Home() {
     },
   })
 
-  async function refreshItemizes() {
+  const refreshItemizes = useCallback(async function() {
     const username = localStorage.getItem('username')
     if (username === null) {
       setListError("Not logged in")
@@ -46,7 +46,7 @@ export default function Home() {
     } catch (error: any) {
       setListError(error.message)
     }
-  }
+  }, [queryForm.values])
 
   async function performCreateItemize() {
     setCreateLoading(true)
@@ -77,7 +77,7 @@ export default function Home() {
       return
     }
     refreshItemizes()
-  }, [])
+  }, [refreshItemizes])
 
   return (
     <PageContainer>
@@ -118,7 +118,7 @@ export default function Home() {
               <Text size="lg">You have no itemizes, create one to get started.</Text>
             </Alert>
           )
-          : itemizes?.map((itemize) => (<ItemizeCard itemize={itemize}/>))
+          : itemizes?.map((itemize) => (<ItemizeCard key={itemize.slug} itemize={itemize}/>))
         )
       }
     </PageContainer>

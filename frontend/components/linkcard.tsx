@@ -43,7 +43,7 @@ export default function LinkCard({link}: { link: ILink }) {
         <Grid>
           <GridCol span={2}>
             <AspectRatio ratio={1} miw={125}>
-              <Image src={link.page_metadata.image_url}></Image>
+              <Image src={link.page_metadata.image_url} alt={link.page_metadata.description || ''}></Image>
             </AspectRatio>
           </GridCol>
 

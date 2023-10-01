@@ -3,7 +3,7 @@ import { Modal, Button, Alert, Space, Text, Title, TextInput, Box, Breadcrumbs, 
 import { useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import LinkCard from "@/components/linkcard"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { getItemize, Itemize, ItemizeContext } from "@/util/api"
 import { IconSearch, IconPlus } from "@tabler/icons-react"
 import Link from "next/link"
@@ -39,9 +39,9 @@ export default function Home({ params }: { params: { username: string, itemize: 
     },
   })
 
-  async function refreshItemize() {
+  const refreshItemize = useCallback(async function() {
     setItemize(await getItemize(params.username, params.itemize, queryForm.values['query']))
-  }
+  }, [params.username, params.itemize, queryForm.values])
 
   async function performLinkAdd() {
     if (itemize === undefined) {
@@ -79,7 +79,7 @@ export default function Home({ params }: { params: { username: string, itemize: 
       console.log(error)
       setListError(error.message)
     })
-  }, [])
+  }, [refreshItemize])
 
   if (listError === undefined) {
     return (
@@ -118,7 +118,7 @@ export default function Home({ params }: { params: { username: string, itemize: 
                     <Text size="md">No links have been added yet...</Text>
                   </Alert>
                 ) : itemize.links.map((link) => 
-                <Box my={10}>
+                <Box my={10} key={link.id}>
                   <LinkCard link={link}/>
                 </Box>)
               }
