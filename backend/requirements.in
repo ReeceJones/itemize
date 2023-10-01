@@ -1,0 +1,13 @@
+extruct
+httpx
+fastapi
+sqlalchemy[asyncio]
+aiosqlite
+uvicorn
+pydantic
+pydantic-settings
+bcrypt
+pyjwt
+python-multipart
+fake-useragent
+pyppeteer
