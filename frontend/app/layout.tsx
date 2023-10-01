@@ -14,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <ColorSchemeScript />
+        <script src="/__ENV.js" />
       </head>
       <body>
         <MantineProvider>{children}</MantineProvider>

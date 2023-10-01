@@ -7,7 +7,6 @@ import { useState, useContext } from "react"
 
 
 export default function LinkCard({link}: { link: ILink }) {
-  console.log(link)
   const {hovered, ref} = useHover()
   const [linkDisabled, setLinkDisabled] = useState<boolean>(false)
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false)

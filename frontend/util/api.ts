@@ -1,6 +1,7 @@
-const API_SERVER = 'http://localhost:8000'
-
+import { env } from "next-runtime-env"
 import { createContext } from "react"
+
+const API_SERVER = env('NEXT_PUBLIC_BACKEND_URL')
 
 export interface User {
     username: string
