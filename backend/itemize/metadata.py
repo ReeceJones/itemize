@@ -27,7 +27,14 @@ class MetadataParser:
     def __init__(self, data: str, url: str) -> None:
         self._data = data
         self._url = url
-        self._metadata = extruct.extract(data, base_url=w3lib.html.get_base_url(data, str(url)), uniform=True)
+
+
+        if CONFIG.PARSER_LOG_PAGEDATA:
+            pathlib.Path('pagedata').mkdir(exist_ok=True)
+            with open(f'pagedata/{datetime.utcnow().isoformat()}.html', 'w') as f:
+                f.write(self._data)
+
+        self._metadata = extruct.extract(data, base_url=w3lib.html.get_base_url(data, str(url)), uniform=True, errors='log')
 
         # fields
         self.title: str | None = None
@@ -38,10 +45,6 @@ class MetadataParser:
         self.currency: str | None = None
 
     def parse(self) -> None:
-        if CONFIG.PARSER_LOG_PAGEDATA:
-            pathlib.Path('pagedata').mkdir(exist_ok=True)
-            with open(f'pagedata/{datetime.utcnow().isoformat()}.html', 'w') as f:
-                f.write(self._data)
 
         pprint.pprint(self._metadata)
         
@@ -101,6 +104,9 @@ class MetadataParser:
             ...
         ]
         """
+        if 'dublincore' not in self._metadata:
+            return None
+
         key_translations = {}
         if key in key_translations:
             key = key_translations[key]
@@ -138,6 +144,9 @@ class MetadataParser:
             }
         ]
         """
+        if 'json-ld' not in self._metadata:
+            return None
+
         key_translations = {
             'title': 'name',
             'image_url': 'image',
@@ -195,6 +204,9 @@ class MetadataParser:
             ...
         ]
         """
+        if 'opengraph' not in self._metadata:
+            return None
+
         key_translations = {
             'title': 'og:title',
             'site_name': 'og:site_name',
@@ -236,6 +248,9 @@ class MetadataParser:
             }
         ]
         """
+        if 'rdfa' not in self._metadata:
+            return None
+
         key_translations = {
             'title': 'http://ogp.me/ns#title',
             'site_name': 'http://ogp.me/ns#site_name',
