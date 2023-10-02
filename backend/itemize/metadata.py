@@ -340,10 +340,14 @@ async def try_write_cache(metadata: schemas.PageMetadata) -> schemas.DBPageMetad
         # TODO: save all images in future
         if metadata.image_url in (None, '') and len(cached.images) == 0:
             global BROWSER
+            # May be useful in the future: https://stackoverflow.com/questions/59270710/python-pyppeteer-proxy-usage
             browser = await pyppeteer.launch()
-            page = await browser.newPage()
-            await page.goto(metadata.url)
-            ss = await page.screenshot({'type': 'jpeg'})
+            try:
+                page = await browser.newPage()
+                await page.goto(metadata.url)
+                ss = await page.screenshot({'type': 'jpeg'})
+            finally:
+                await browser.close()
             if isinstance(ss, str):
                 ss = ss.encode('utf-8')
             session.add(models.MetadataImage(

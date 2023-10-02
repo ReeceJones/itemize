@@ -11,3 +11,4 @@ pyjwt
 python-multipart
 fake-useragent
 pyppeteer
+alembic
