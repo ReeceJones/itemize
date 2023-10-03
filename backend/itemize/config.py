@@ -15,6 +15,7 @@ class Config(BaseSettings):
     SERVER_URL: str = 'http://localhost:8000'
     LOG_LEVEL: str = 'INFO'
     LOG_FORMAT: str = logging.BASIC_FORMAT
+    SCREENSHOT_PAGE: bool = False
 
 
 CONFIG = Config()

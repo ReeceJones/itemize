@@ -337,26 +337,27 @@ async def save_metadata(
 
     # May be useful in the future: https://stackoverflow.com/questions/59270710/python-pyppeteer-proxy-usage
     if metadata.image_url in (None, ''):
-        browser = await pyppeteer.launch()
-        try:
-            page = await browser.newPage()
-            await page.goto(metadata.url)
-            ss = await page.screenshot({'type': 'jpeg'})
-        finally:
-            await browser.close()
-        if isinstance(ss, str):
-            ss = ss.encode('utf-8')
-        image = models.MetadataImage(
-            mime='image/jpeg',
-            data=ss,
-            source_image_url=metadata.url
-        )
-        session.add(image)
-        await session.commit()
-        await session.refresh(image)
-        metadata.image_id = image.id
-        await session.commit()
-        await session.refresh(metadata, ['image'])
+        if CONFIG.SCREENSHOT_PAGE:
+            browser = await pyppeteer.launch()
+            try:
+                page = await browser.newPage()
+                await page.goto(metadata.url)
+                ss = await page.screenshot({'type': 'jpeg'})
+            finally:
+                await browser.close()
+            if isinstance(ss, str):
+                ss = ss.encode('utf-8')
+            image = models.MetadataImage(
+                mime='image/jpeg',
+                data=ss,
+                source_image_url=metadata.url
+            )
+            session.add(image)
+            await session.commit()
+            await session.refresh(image)
+            metadata.image_id = image.id
+            await session.commit()
+            await session.refresh(metadata, ['image'])
     else:
         async with httpx.AsyncClient(follow_redirects=True) as client:
             user_agent_header = fake_useragent.UserAgent().random
