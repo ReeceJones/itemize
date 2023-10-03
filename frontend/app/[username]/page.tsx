@@ -1,5 +1,5 @@
 'use client'
-import { Title, Alert, Space } from "@mantine/core";
+import { Title, Alert, Space, Box } from "@mantine/core";
 import PageContainer from "@/components/pagecontainer";
 import ItemizeCard from "@/components/itemizecard";
 import { useEffect, useState, useCallback } from "react";
@@ -36,7 +36,9 @@ export default function UserPage({ params }: { params: { username: string }}) {
       }
       {
         itemizes && itemizes.map((itemize) => (
-          <ItemizeCard key={itemize.slug} itemize={itemize}/>
+          <Box my={10} key={itemize.slug}>
+            <ItemizeCard itemize={itemize}/>
+          </Box>
         ))
       }
     </PageContainer>

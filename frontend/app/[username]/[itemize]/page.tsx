@@ -87,7 +87,7 @@ export default function Home({ params }: { params: { username: string, itemize: 
         {
           itemize !== undefined ? (
             <Breadcrumbs>
-              <Anchor component={Link} href={`/${itemize.owner}`} size="xl" fw={500}>{itemize.owner}</Anchor>
+              <Anchor component={Link} href={`/${params.username}`} size="xl" fw={500}>{params.username}</Anchor>
               <Text size="xl" fw={500}>{itemize.name}</Text>
             </Breadcrumbs>
           ) : (

@@ -15,8 +15,14 @@ export default function LinkCard({link}: { link: ILink }) {
 
   async function deleteLink() {
     setDeleteLoading(true)
+    const username = itemize.user?.username
+    if (username === undefined) {
+      setDeleteError("Error parsing link data: could not get username")
+      setDeleteLoading(false)
+      return
+    }
     try {
-      await deleteLinkFromItemize(itemize.owner, itemize.slug, link.id)
+      await deleteLinkFromItemize(username, itemize.slug, link.id)
     } catch (error: any) {
       setDeleteError(error.message)
       setDeleteLoading(false)
@@ -43,7 +49,7 @@ export default function LinkCard({link}: { link: ILink }) {
         <Grid>
           <GridCol span={2}>
             <AspectRatio ratio={1} miw={125}>
-              <Image src={link.page_metadata.image_url} alt={link.page_metadata.description || ''}></Image>
+              <Image src={link.page_metadata?.image?.url} alt={link.page_metadata?.description || ''}></Image>
             </AspectRatio>
           </GridCol>
 
@@ -52,7 +58,7 @@ export default function LinkCard({link}: { link: ILink }) {
               {/* <Group justify="space-between" mr={10}> */}
               <Grid>
                 <GridCol span={11}>
-                    <Text fw={500}>{link.page_metadata.title}</Text>
+                    <Text fw={500}>{link.page_metadata?.title}</Text>
                 </GridCol>
                 <GridCol span={1}>
                   <Flex justify="flex-end" mx={10}>
@@ -80,7 +86,7 @@ export default function LinkCard({link}: { link: ILink }) {
                 </GridCol>
               </Grid>
               {/* </Group> */}
-              <Text size="sm" c="dimmed" lineClamp={3}>{link.page_metadata.description || ''}</Text>
+              <Text size="sm" c="dimmed" lineClamp={3}>{link.page_metadata?.description || ''}</Text>
             </Stack>
           </GridCol>
         </Grid>

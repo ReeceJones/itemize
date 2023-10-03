@@ -34,7 +34,7 @@ export default function Header() {
           {
             currentUsername !== null && (
               <>
-                <TextInput placeholder="Search" rightSection={<IconSearch size={18}/>}/>
+                <TextInput placeholder="Search" disabled rightSection={<IconSearch size={18}/>}/>
               </>
             )
           }

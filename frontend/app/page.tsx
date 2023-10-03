@@ -118,7 +118,11 @@ export default function Home() {
               <Text size="lg">You have no itemizes, create one to get started.</Text>
             </Alert>
           )
-          : itemizes?.map((itemize) => (<ItemizeCard key={itemize.slug} itemize={itemize}/>))
+          : itemizes?.map((itemize) => (
+            <Box my={10} key={itemize.slug}>
+              <ItemizeCard itemize={itemize}/>
+            </Box>
+          ))
         )
       }
     </PageContainer>

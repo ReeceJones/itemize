@@ -4,10 +4,21 @@ import itemize.api.itemize
 
 import itemize.errors
 
+import logging
+
 from itemize.db import DB
+from itemize.config import CONFIG
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+
+"""
+LOGGING CONFIG
+"""
+logging.basicConfig(format=CONFIG.LOG_FORMAT, level=logging.getLevelNamesMapping()[CONFIG.LOG_LEVEL])
+
+logging.info(CONFIG)
 
 
 """

@@ -1,8 +1,70 @@
 import pydantic
 
+from datetime import datetime
+from typing import Optional
+
 
 class BaseModel(pydantic.BaseModel):
     pass
+
+
+"""
+Model schemas
+"""
+
+
+class DBModel(BaseModel):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class MetadataImage(DBModel):
+    mime: str | None
+    source_image_url: str | None
+    url: str | None
+
+
+class PageMetadata(DBModel):
+    url: str
+    image_url: str | None
+    title: str | None
+    description: str | None
+    site_name: str | None
+    price: str | None
+    currency: str | None
+    image_id: int | None
+    image: MetadataImage | None
+
+
+class User(DBModel):
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    itemizes: list['Itemize'] | None
+
+
+class Link(DBModel):
+    url: str
+    itemize_id: int
+    page_metadata_id: int
+    page_metadata: PageMetadata | None
+    itemize: Optional['Itemize']
+
+
+class Itemize(DBModel):
+    name: str
+    slug: str
+    description: str | None
+    user_id: int
+    user: User | None
+    links: list[Link] | None
+
+
+"""
+API Schemas
+"""
 
 
 class APIRequest(BaseModel):
@@ -11,43 +73,6 @@ class APIRequest(BaseModel):
 
 class APIResponse(BaseModel):
     pass
-
-
-class PageMetadata(BaseModel):
-    url: str
-    image_url: str
-    title: str
-    description: str
-    site_name: str
-
-
-class DBPageMetadata(PageMetadata):
-    id: int
-
-
-class Link(BaseModel):
-    id: int
-    url: str
-    page_metadata: PageMetadata
-
-
-class PageMetadataRequest(APIRequest):
-    urls: list[str]
-
-
-class PageMetadataResponse(APIResponse):
-    metadatas: list[PageMetadata]
-
-
-class User(BaseModel):
-    username: str
-    email: str
-    first_name: str
-    last_name: str
-
-
-class DBUser(User):
-    id: int
 
 
 class CreateUserRequest(APIRequest):
@@ -68,12 +93,12 @@ class Token(APIResponse):
     token_type: str = 'bearer'
 
 
-class Itemize(BaseModel):
-    name: str
-    slug: str
-    description: str | None
-    owner: str
-    links: list[Link]
+class PageMetadataRequest(APIRequest):
+    urls: list[str]
+
+
+class PageMetadataResponse(APIResponse):
+    metadatas: list[PageMetadata]
 
 
 class CreateItemizeRequest(APIRequest):

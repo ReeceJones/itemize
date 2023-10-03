@@ -8,21 +8,33 @@ export interface User {
     email: string
     first_name: string
     last_name: string
+    itemizes: Itemize[] | null
+}
+
+export interface MetadataImage {
+    source_image_url: string
+    url: string
 }
 
 export interface PageMetadata {
     url: string
-    image_url: string
-    title: string
+    image_url: string | null
+    title: string | null
     description: string | null
-    site_name: string
+    site_name: string | null
+    price: string | null
+    currency: string | null
+    image_id: number | null
+    image: MetadataImage | null
 }
-
 
 export interface Link {
     id: number
     url: string
-    page_metadata: PageMetadata
+    itemize_id: number
+    page_metadata_id: number
+    page_metadata: PageMetadata | null
+    itemize: Itemize | null
 }
 
 
@@ -30,7 +42,8 @@ export interface Itemize {
     name: string
     slug: string
     description: string | null
-    owner: string
+    user_id: number
+    user: User | null
     links: Link[]
 }
 
@@ -45,7 +58,8 @@ export const ItemizeContext = createContext<ItemizeContextHook>({
         name: '',
         slug: '',
         description: '',
-        owner: '',
+        user_id: 0,
+        user: null,
         links: [],
     },
     setItemize: () => {},

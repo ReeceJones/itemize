@@ -1,7 +1,8 @@
+import logging
 import httpx
 import extruct
 import w3lib.html
-import pprint
+import json
 import pathlib
 import fake_useragent
 import pyppeteer
@@ -11,7 +12,6 @@ from itemize import schemas
 from itemize import models
 from itemize import errors
 
-from itemize.db import DB
 from itemize.config import CONFIG
 
 from datetime import datetime
@@ -19,9 +19,8 @@ from functools import reduce
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 
-
-URL_CACHE: dict[str, schemas.DBPageMetadata] = {}
 
 class MetadataParser:
     def __init__(self, data: str, url: str) -> None:
@@ -46,7 +45,7 @@ class MetadataParser:
 
     def parse(self) -> None:
 
-        pprint.pprint(self._metadata)
+        logging.info(json.dumps(self._metadata))
         
         parer_get_methods = {
             'dublincore': self._dublincore_get,
@@ -285,111 +284,122 @@ class MetadataParser:
         return str(grouped_values['@value'])
 
 
-async def get_image(page_metadata_id: int) -> bytes:
-    async with DB.async_session() as session:
-        image = await session.scalar(select(models.MetadataImage).where(models.MetadataImage.page_metadata_id == page_metadata_id))
-        if image is None:
-            raise errors.ImageNotFoundError('Image not found!')
-        return image.data
+async def get_metadata_image(session: AsyncSession, metadata_image_id: int) -> schemas.MetadataImage:
+    logging.info('hello world')
+    image = await session.scalar(select(models.MetadataImage).where(models.MetadataImage.id == metadata_image_id))
+    if image is None:
+        raise errors.ImageNotFoundError('Image not found!')
+    return image
 
 
-async def get_cached(url: str) -> schemas.DBPageMetadata | None:
-    if url in URL_CACHE:
-        return URL_CACHE[url]
-    async with DB.async_session() as session:
-        metadata = await session.scalar(
-            select(models.PageMetadata)
-            .where(models.PageMetadata.url == url)
-            .options(selectinload(models.PageMetadata.images))
+async def get_metadata_from_db(session: AsyncSession, url: str) -> schemas.PageMetadata | None:
+    metadata = await session.scalar(
+        select(models.PageMetadata)
+        .where(models.PageMetadata.url == url)
+        .options(selectinload(models.PageMetadata.image))
+    )
+    if metadata is None:
+        return None
+    return await metadata.to_schema()
+
+async def save_metadata(
+        session: AsyncSession,
+        *,
+        url: str,
+        title: str | None,
+        description: str | None,
+        site_name: str | None,
+        image_url: str | None,
+        price: str | None,
+        currency: str | None,
+) -> schemas.PageMetadata:
+    metadata = await session.scalar(select(models.PageMetadata).where(models.PageMetadata.url == url))
+    if metadata is not None:
+        metadata.title = title
+        metadata.description = description
+        metadata.site_name = site_name
+        metadata.image_url = image_url
+        metadata.price = price
+        metadata.currency = currency
+    else:
+        metadata = models.PageMetadata(
+            url=url,
+            title=title,
+            description=description,
+            site_name=site_name,
+            image_url=image_url,
+            price=price,
+            currency=currency
         )
-        if metadata is None:
-            return None
-        metadata_schema = schemas.DBPageMetadata(
-            id=metadata.id,
-            url=metadata.url,
-            image_url=metadata.image_url if metadata.image_url != '' else (
-                f'{CONFIG.SERVER_URL}/metadata/images/{metadata.images[0].id}' if len(metadata.images) > 0 else ''
-            ),
-            title=metadata.title,
-            description=metadata.description,
-            site_name=metadata.site_name
-        )
-        URL_CACHE[url] = metadata_schema
-        return metadata_schema
+        session.add(metadata)
+    await session.commit()
+    await session.refresh(metadata)
 
-async def try_write_cache(metadata: schemas.PageMetadata) -> schemas.DBPageMetadata:
-    async with DB.async_session() as session:
-        cached = await session.scalar(select(models.PageMetadata).where(models.PageMetadata.url == metadata.url))
-        if cached is not None:
-            cached.image_url = metadata.image_url
-            cached.title = metadata.title
-            cached.description = metadata.description
-            cached.site_name = metadata.site_name
-        else:
-            cached = models.PageMetadata(
-                url=metadata.url,
-                image_url=metadata.image_url,
-                title=metadata.title,
-                description=metadata.description,
-                site_name=metadata.site_name
-            )
-            session.add(cached)
+    # May be useful in the future: https://stackoverflow.com/questions/59270710/python-pyppeteer-proxy-usage
+    if metadata.image_url in (None, ''):
+        browser = await pyppeteer.launch()
+        try:
+            page = await browser.newPage()
+            await page.goto(metadata.url)
+            ss = await page.screenshot({'type': 'jpeg'})
+        finally:
+            await browser.close()
+        if isinstance(ss, str):
+            ss = ss.encode('utf-8')
+        image = models.MetadataImage(
+            mime='image/jpeg',
+            data=ss,
+            source_image_url=metadata.url
+        )
+        session.add(image)
         await session.commit()
-        await session.refresh(cached, ['images'])
+        await session.refresh(image)
+        metadata.image_id = image.id
+        await session.commit()
+        await session.refresh(metadata, ['image'])
+    else:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            user_agent_header = fake_useragent.UserAgent().random
+            response = await client.get(metadata.image_url, headers={'User-Agent': user_agent_header})
+            logging.debug(f'Got response for downloading image: {response.status_code=} {response.headers=} {response.content=}')
+            if response.status_code == 200:
+                image = models.MetadataImage(
+                    mime=response.headers.get('Content-Type', None),
+                    data=response.content,
+                    source_image_url=metadata.image_url
+                )
+                session.add(image)
+                await session.commit()
+                await session.refresh(image)
+                metadata.image_id = image.id
+                await session.commit()
+                await session.refresh(metadata, ['image'])
 
-        # TODO: save all images in future
-        if metadata.image_url in (None, '') and len(cached.images) == 0:
-            global BROWSER
-            # May be useful in the future: https://stackoverflow.com/questions/59270710/python-pyppeteer-proxy-usage
-            browser = await pyppeteer.launch()
-            try:
-                page = await browser.newPage()
-                await page.goto(metadata.url)
-                ss = await page.screenshot({'type': 'jpeg'})
-            finally:
-                await browser.close()
-            if isinstance(ss, str):
-                ss = ss.encode('utf-8')
-            session.add(models.MetadataImage(
-                data=ss,
-                page_metadata_id=cached.id
-            ))
-            await session.commit()
-            await session.refresh(cached, ['images'])
-
-        db_schema = schemas.DBPageMetadata(
-            id=cached.id,
-            url=cached.url,
-            image_url=cached.image_url if cached.image_url != '' else (
-                f'{CONFIG.SERVER_URL}/metadata/images/{cached.images[0].id}' if len(cached.images) > 0 else ''
-            ),
-            title=cached.title,
-            description=cached.description,
-            site_name=cached.site_name
-        )
-        URL_CACHE[metadata.url] = db_schema
-        return db_schema
+    db_schema = await metadata.to_schema()
+    return db_schema
 
 
-async def get_metadata(url: str, *, cache_only: bool = False) -> schemas.DBPageMetadata | None:
-    # if (cached := await get_cached(url)) is not None:
-    #     return cached
-    # if cache_only:
-    #     return None
+async def get_metadata(session: AsyncSession, url: str, *, cache_only: bool = False) -> schemas.PageMetadata | None:
+    if (metadata := await get_metadata_from_db(session, url)) is not None:
+        return metadata
+    if cache_only:
+        return None
 
     async with httpx.AsyncClient() as client:
         user_agent_header = fake_useragent.UserAgent().random
         response = await client.get(url, headers={'User-Agent': user_agent_header})
-        print(len(response.text))
 
     parser = MetadataParser(response.text, str(response.url))
     parser.parse()
 
-    print(f'{parser.title=} {parser.site_name=} {parser.description=} {parser.image_url=} {parser.price=} {parser.currency=}')
-    return await try_write_cache(schemas.PageMetadata(
+    logging.info(f'{parser.title=} {parser.site_name=} {parser.description=} {parser.image_url=} {parser.price=} {parser.currency=}')
+    return await save_metadata(
+        session,
         url=url,
-        image_url=parser.image_url or '',
-        title=parser.title or '',
-        description=parser.description or '',
-        site_name=parser.site_name or '',
-    ))
+        title=parser.title,
+        description=parser.description,
+        site_name=parser.site_name,
+        image_url=parser.image_url,
+        price=parser.price,
+        currency=parser.currency
+    )

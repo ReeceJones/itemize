@@ -1,3 +1,5 @@
+import logging
+
 from pydantic_settings import BaseSettings
 
 
@@ -11,8 +13,8 @@ class Config(BaseSettings):
     JWT_EXPIRATION_MINUTES: int = 60 * 24 * 30
     PARSER_LOG_PAGEDATA: bool = True
     SERVER_URL: str = 'http://localhost:8000'
+    LOG_LEVEL: str = 'INFO'
+    LOG_FORMAT: str = logging.BASIC_FORMAT
 
 
 CONFIG = Config()
-
-print(CONFIG)

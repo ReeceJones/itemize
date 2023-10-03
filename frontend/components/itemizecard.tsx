@@ -4,7 +4,7 @@ import { Itemize } from "@/util/api"
 
 export default function ItemizeCard({ itemize }: { itemize: Itemize }) {
   return (
-    <UnstyledButton component={Link} key={itemize.slug} href={`/${itemize.owner}/${itemize.slug}`}>
+    <UnstyledButton component={Link} key={itemize.slug} href={`/${itemize.user?.username}/${itemize.slug}`}>
       <Card shadow="sm" padding={0} radius="md" withBorder>
         <Stack m={10}>
           <Text size="xl" fw={500}>{itemize.name}</Text>
