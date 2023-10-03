@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 RUN_MIGRATIONS=${RUN_MIGRATIONS:-"true"}
 STOP_AFTER_MIGRATIONS=${STOP_AFTER_MIGRATIONS:-"false"}
 PORT=${PORT:-"8000"}
