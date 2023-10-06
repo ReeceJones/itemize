@@ -7,7 +7,7 @@ from itemize.config import CONFIG
 from itemize import schemas
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 
 class Base(DeclarativeBase):
@@ -60,7 +60,7 @@ class PageMetadata(Base):
     currency: Mapped[str | None]
 
     image_id: Mapped[int | None] = mapped_column(ForeignKey('metadataimage.id'))
-    image: Mapped['MetadataImage'] = relationship('MetadataImage', lazy='raise')
+    image: Mapped[Optional['MetadataImage']] = relationship('MetadataImage', lazy='raise')
 
     async def to_schema(self) -> schemas.PageMetadata:
         image = None
@@ -74,6 +74,39 @@ class PageMetadata(Base):
         return schemas.PageMetadata(
             **(await super().to_dict()),
             url=self.url,
+            image_url=self.image_url,
+            title=self.title,
+            description=self.description,
+            site_name=self.site_name,
+            price=self.price,
+            currency=self.currency,
+            image_id=self.image_id,
+            image=image   
+        )
+    
+
+class PageMetadataOverride(Base):
+    image_url: Mapped[str | None]
+    title: Mapped[str | None]
+    description: Mapped[str | None]
+    site_name: Mapped[str | None]
+    price: Mapped[str | None]
+    currency: Mapped[str | None]
+
+    image_id: Mapped[int | None] = mapped_column(ForeignKey('metadataimage.id'))
+    image: Mapped[Optional['MetadataImage']] = relationship('MetadataImage', lazy='raise')
+
+    async def to_schema(self) -> schemas.PageMetadataOverride:
+        image = None
+
+        try:
+            if self.image is not None:
+                image = await self.image.to_schema()
+        except InvalidRequestError:
+            pass
+
+        return schemas.PageMetadataOverride(
+            **(await super().to_dict()),
             image_url=self.image_url,
             title=self.title,
             description=self.description,
@@ -117,12 +150,15 @@ class Link(Base):
     url: Mapped[str] = mapped_column(index=True, unique=True)
     itemize_id: Mapped[int] = mapped_column(ForeignKey('itemize.id'))
     page_metadata_id: Mapped[int] = mapped_column(ForeignKey('pagemetadata.id'))
+    page_metadata_override_id: Mapped[int | None] = mapped_column(ForeignKey('pagemetadataoverride.id'))
     page_metadata: Mapped['PageMetadata'] = relationship('PageMetadata', lazy='raise')
+    page_metadata_override: Mapped[Optional['PageMetadataOverride']] = relationship('PageMetadataOverride', lazy='raise')
     itemize: Mapped['Itemize'] = relationship('Itemize', back_populates='links', lazy='raise')
 
     async def to_schema(self) -> schemas.Link:
         page_metadata = None
         itemize = None
+        page_metadata_override = None
 
         try:
             if self.page_metadata is not None:
@@ -136,12 +172,20 @@ class Link(Base):
         except InvalidRequestError:
             pass
 
+        try:
+            if self.page_metadata_override is not None:
+                page_metadata_override = await self.page_metadata_override.to_schema()
+        except InvalidRequestError:
+            pass
+
         return schemas.Link(
             **(await super().to_dict()),
             url=self.url,
             itemize_id=self.itemize_id,
             page_metadata_id=self.page_metadata_id,
+            page_metadata_override_id=self.page_metadata_override_id,
             page_metadata=page_metadata,
+            page_metadata_override=page_metadata_override,
             itemize=itemize,
         )
 

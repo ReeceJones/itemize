@@ -37,6 +37,17 @@ class PageMetadata(DBModel):
     image: MetadataImage | None
 
 
+class PageMetadataOverride(DBModel):
+    image_url: str | None
+    title: str | None
+    description: str | None
+    site_name: str | None
+    price: str | None
+    currency: str | None
+    image_id: int | None
+    image: MetadataImage | None
+
+
 class User(DBModel):
     username: str
     email: str
@@ -49,7 +60,9 @@ class Link(DBModel):
     url: str
     itemize_id: int
     page_metadata_id: int
+    page_metadata_override_id: int | None
     page_metadata: PageMetadata | None
+    page_metadata_override: PageMetadataOverride | None
     itemize: Optional['Itemize']
 
 
@@ -123,4 +136,17 @@ class CreateLinkRequest(APIRequest):
 
 
 class CreateLinkResponse(APIResponse):
+    link: Link
+
+
+class UpdateLinkMetadataRequest(APIRequest):
+    title: str | None
+    description: str | None
+    image_url: str | None
+    site_name: str | None
+    price: str | None
+    currency: str | None
+
+
+class UpdateLinkMetadataResponse(APIResponse):
     link: Link

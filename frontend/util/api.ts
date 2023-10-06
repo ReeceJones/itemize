@@ -28,15 +28,25 @@ export interface PageMetadata {
     image: MetadataImage | null
 }
 
+export interface PageMetadataOverride {
+    image_url: string | null
+    title: string | null
+    description: string | null
+    site_name: string | null
+    price: string | null
+    currency: string | null
+}
+
 export interface Link {
     id: number
     url: string
     itemize_id: number
     page_metadata_id: number
+    page_metadata_override_id: number | null
     page_metadata: PageMetadata | null
+    page_metadata_override: PageMetadataOverride | null
     itemize: Itemize | null
 }
-
 
 export interface Itemize {
     name: string
@@ -197,4 +207,20 @@ export async function deleteLinkFromItemize(username: string, slug: string, link
         const j = await response.json()
         throw new Error(j['detail'])
     }
+}
+
+export async function updateLinkMetadata(username: string, slug: string, link_id: number, metadata_override: PageMetadataOverride): Promise<Link> {
+    const response = await fetch(`${API_SERVER}/itemize/${username}/${slug}/${link_id}`, {
+        method: 'PATCH',
+        headers: {
+            'Authorization': localStorage.getItem('auth_header') || '',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(metadata_override),
+    })
+    if (response.status != 200) {
+        const j = await response.json()
+        throw new Error(j['detail'])
+    }
+    return (await response.json())['link']
 }

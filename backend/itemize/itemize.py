@@ -61,6 +61,7 @@ async def list_itemizes(session: AsyncSession, username: str, *, query: str | No
         .options(
             selectinload(models.Itemize.links),
             selectinload(models.Itemize.links).selectinload(models.Link.page_metadata),
+            selectinload(models.Itemize.links).selectinload(models.Link.page_metadata_override),
             selectinload(models.Itemize.user)
         )
     )
@@ -88,7 +89,8 @@ async def get_itemize(session: AsyncSession, username: str, slug: str, *, query:
         .options(
             selectinload(models.Itemize.links),
             selectinload(models.Itemize.links).selectinload(models.Link.page_metadata).selectinload(models.PageMetadata.image),
-            selectinload(models.Itemize.user)
+            selectinload(models.Itemize.user),
+            selectinload(models.Itemize.links).selectinload(models.Link.page_metadata_override).selectinload(models.PageMetadataOverride.image),
         )
     )
     if itemize is None:
@@ -122,6 +124,66 @@ async def create_link(session: AsyncSession, username: str, slug: str, url: str)
     session.add(link)
     await session.commit()
     
+    return await link.to_schema()
+
+
+async def update_link_metadata(
+        session: AsyncSession,
+        username: str,
+        slug: str,
+        link_id: int,
+        *,
+        image_url: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        site_name: str | None = None,
+        price: str | None = None,
+        currency: str | None = None,    
+    ) -> schemas.Link:
+    link = await session.scalar(
+        select(models.Link)
+        .join(
+            models.Itemize
+        )
+        .join(
+            models.User
+        )
+        .where(
+            models.User.username == username,
+            models.Itemize.slug == slug,
+            models.Link.id == link_id,
+        )
+        .options(
+            selectinload(models.Link.page_metadata_override),
+        )
+    )
+    if link is None:
+        raise ItemizeLinkNotFoundError('Link not found!')
+    
+    if link.page_metadata_override_id is None:
+        link.page_metadata_override = models.PageMetadataOverride()
+        session.add(link.page_metadata_override)
+        await session.commit()
+        await session.refresh(link.page_metadata_override)
+        link.page_metadata_override_id = link.page_metadata_override.id
+        await session.commit()
+        await session.refresh(link, ['page_metadata_override'])
+
+    if image_url is not None:
+        link.page_metadata_override.image_url = image_url
+    if title is not None:
+        link.page_metadata_override.title = title
+    if description is not None:
+        link.page_metadata_override.description = description
+    if site_name is not None:
+        link.page_metadata_override.site_name = site_name
+    if price is not None:
+        link.page_metadata_override.price = price
+    if currency is not None:
+        link.page_metadata_override.currency = currency
+    await session.commit()
+    await session.refresh(link, ['page_metadata_override', 'page_metadata'])
+
     return await link.to_schema()
 
 

@@ -69,6 +69,25 @@ async def create_link(username: str, itemize_slug: str, req: Annotated[schemas.C
     )
 
 
+@router.patch('/{username}/{itemize_slug}/{link_id}', dependencies=[MatchUsernameSlug])
+async def update_link_metadata(username: str, itemize_slug: str, link_id: int, req: Annotated[schemas.UpdateLinkMetadataRequest, Body()], session: DB) -> schemas.UpdateLinkMetadataResponse:
+    link = await itemize.update_link_metadata(
+        session,
+        username=username,
+        slug=itemize_slug,
+        link_id=link_id,
+        title=req.title,
+        description=req.description,
+        image_url=req.image_url,
+        site_name=req.site_name,
+        price=req.price,
+        currency=req.currency
+    )
+    return schemas.UpdateLinkMetadataResponse(
+        link=link
+    )
+
+
 @router.delete('/{username}/{itemize_slug}/{link_id}', dependencies=[MatchUsernameSlug])
 async def delete_link(username: str, itemize_slug: str, link_id: int, session: DB) -> None:
     await itemize.delete_link(

@@ -1,5 +1,5 @@
 'use client'
-import {TextInput, Textarea, Button, Modal, Box, Center, Space, Alert, Text, Group, Grid, GridCol} from "@mantine/core"
+import {TextInput, Textarea, Button, Modal, Box, Space, Alert, Text, Grid, GridCol} from "@mantine/core"
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { IconSearch } from "@tabler/icons-react";
