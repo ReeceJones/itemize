@@ -172,7 +172,7 @@ export default function LinkCard({link}: { link: ILink }) {
                 <Text size="sm" c="dimmed" lineClamp={2}>{description}</Text>
                 {
                   price && (
-                    <Text c="dimmed">{getCurrencySymbol(currency) || "$"}{parseFloat(price).toLocaleString()}</Text>
+                    <Text c="dimmed">{parseFloat(price).toLocaleString("en-US", {style: "currency", currency: currency || "USD"})}</Text>
                   )
                 }
               </Stack>
