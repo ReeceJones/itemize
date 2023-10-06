@@ -36,7 +36,7 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('link', schema=None) as batch_op:
         batch_op.add_column(sa.Column('page_metadata_override_id', sa.Integer(), nullable=True))
-        batch_op.create_foreign_key(None, 'pagemetadataoverride', ['page_metadata_override_id'], ['id'])
+        batch_op.create_foreign_key('fk_page_metadata_override_id_id', 'pagemetadataoverride', ['page_metadata_override_id'], ['id'])
 
     # ### end Alembic commands ###
 
