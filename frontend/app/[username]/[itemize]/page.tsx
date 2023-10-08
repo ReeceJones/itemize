@@ -1,22 +1,26 @@
 'use client'
-import { Modal, Button, Alert, Space, Text, Title, TextInput, Box, Breadcrumbs, Anchor, Skeleton } from "@mantine/core"
+import { Modal, Button, Alert, Space, Text, Group, ActionIcon, TextInput, Textarea, Box, Breadcrumbs, Anchor, Skeleton, Popover, PopoverTarget, PopoverDropdown, Pill, Switch } from "@mantine/core"
 import { useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import LinkCard from "@/components/linkcard"
 import { useEffect, useState, useCallback } from "react"
 import { getItemize, Itemize, ItemizeContext } from "@/util/api"
-import { IconSearch, IconPlus } from "@tabler/icons-react"
+import { IconSearch, IconPlus, IconAdjustmentsHorizontal } from "@tabler/icons-react"
 import Link from "next/link"
-import { addLinkToItemize } from "@/util/api"
+import { addLinkToItemize, updateItemize } from "@/util/api"
 import PageContainer from "@/components/pagecontainer"
+import { useRouter } from "next/navigation"
 
 
 export default function Home({ params }: { params: { username: string, itemize: string } }) {
   const [itemize, setItemize] = useState<Itemize | undefined>(undefined)
   const [addLoading, setAddLoading] = useState<boolean>(false)
+  const [updateLoading, setUpdateLoading] = useState<boolean>(false)
   const [opened, { open, close }] = useDisclosure(false)
   const [listError, setListError] = useState<string | undefined>(undefined)
   const [addError, setAddError] = useState<string | undefined>(undefined)
+  const [updateError, setUpdateError] = useState<string | undefined>(undefined)
+  const { push } = useRouter()
 
   const addLinkForm = useForm({
     initialValues: {
@@ -38,9 +42,24 @@ export default function Home({ params }: { params: { username: string, itemize: 
       query: "",
     },
   })
+  const settingsForm = useForm({
+    initialValues: {
+      name: '',
+      description: '',
+      public: false,
+    }
+  })
 
   const refreshItemize = useCallback(async function() {
-    setItemize(await getItemize(params.username, params.itemize, queryForm.values['query']))
+    const newItemize = await getItemize(params.username, params.itemize, queryForm.values['query'])
+    setItemize(newItemize)
+    const newValues = {
+      name: newItemize.name,
+      description: newItemize.description || '',
+      public: newItemize.public,
+    }
+    settingsForm.setInitialValues(newValues)
+    settingsForm.setValues(newValues)
   }, [params.username, params.itemize, queryForm.values])
 
   async function performLinkAdd() {
@@ -72,6 +91,33 @@ export default function Home({ params }: { params: { username: string, itemize: 
     await refreshItemize()
   }
 
+  async function performItemizeUpdate() {
+    setUpdateLoading(true)
+    const values = {
+      name: settingsForm.isDirty('name') ? settingsForm.values['name'] : null,
+      description: settingsForm.isDirty('description') ? settingsForm.values['description'] : null,
+      public: settingsForm.isDirty('public') ? settingsForm.values['public'] : null,
+    }
+    try {
+      const newItemize = await updateItemize(params.username, params.itemize, values)
+      setUpdateError(undefined)
+      if (newItemize.slug != params.itemize) {
+        push(`/${params.username}/${newItemize.slug}`) 
+        return
+      }
+      try {
+        await refreshItemize()
+      } catch (error: any) {
+        setListError(error.message)
+      }
+      setUpdateLoading(false)
+    } catch (error: any) {
+      console.log(error)
+      setUpdateError(error.message)
+      setUpdateLoading(false)
+    }
+  }
+
   useEffect(() => {
     refreshItemize().then((itemize) => {
       console.log(itemize)
@@ -84,19 +130,54 @@ export default function Home({ params }: { params: { username: string, itemize: 
   if (listError === undefined) {
     return (
       <PageContainer>
-        {
-          itemize !== undefined ? (
-            <Breadcrumbs>
-              <Anchor component={Link} href={`/${params.username}`} size="xl" fw={500}>{params.username}</Anchor>
-              <Text size="xl" fw={500}>{itemize.name}</Text>
-            </Breadcrumbs>
-          ) : (
-            <Breadcrumbs>
-              <Skeleton width={100} height={20}/>
-              <Skeleton width={150} height={20}/>
-            </Breadcrumbs>
-          )
-        }
+        <Group justify="space-between">
+          <Group>
+            {
+              itemize !== undefined ? (
+                <Breadcrumbs>
+                  <Anchor component={Link} href={`/${params.username}`} size="xl" fw={500}>{params.username}</Anchor>
+                    <Text size="xl" fw={500}>{itemize.name}</Text>
+                </Breadcrumbs>
+              ) : (
+                <Breadcrumbs>
+                  <Skeleton width={100} height={20}/>
+                  <Skeleton width={150} height={20}/>
+                </Breadcrumbs>
+              )
+            }
+
+            {
+              itemize?.public === false && (
+                <Pill>Private</Pill>
+              )
+            }
+          </Group>
+
+          <Popover>
+            <PopoverTarget>
+              <ActionIcon variant="subtle" color="dark"><IconAdjustmentsHorizontal size={20}/></ActionIcon>
+            </PopoverTarget>
+            <PopoverDropdown>
+              <form onSubmit={settingsForm.onSubmit(performItemizeUpdate)}>
+                <TextInput label="Name" placeholder="Name" {...settingsForm.getInputProps('name')}/>
+                <Space h={10}/>
+                <Textarea label="Description" placeholder="Description" {...settingsForm.getInputProps('description')}/>
+                <Space h={10}/>
+                <Switch label="Public" defaultChecked={settingsForm.values['public']} {...settingsForm.getInputProps('public')} />
+                {
+                  updateError && (
+                    <>
+                      <Space h={10}/>
+                      <Alert color="red" title="Error">{updateError}</Alert>
+                    </>
+                  )
+                }
+                <Space h={10}/>
+                <Button type="submit" loading={updateLoading} fullWidth>Save</Button>
+              </form>
+            </PopoverDropdown>
+          </Popover>
+        </Group>
         {
           itemize?.description && (
             <>
@@ -105,7 +186,6 @@ export default function Home({ params }: { params: { username: string, itemize: 
             </>
           )
         }
-        {/* <Link href={`/${itemize?.owner}`}><Text component="span" c="gray" size="lg" td="underline" fw={500}>{itemize?.owner}</Text></Link> */}
         <Space h={20}/>
         <TextInput placeholder="Search" rightSection={<IconSearch size={18}/>} onKeyUp={performQuery} {...queryForm.getInputProps('query')}/>
         <Space h={20}/>

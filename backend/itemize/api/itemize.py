@@ -1,19 +1,20 @@
 from itemize import itemize
 from itemize import schemas
 
-from itemize.api._deps import MatchUsernameSlug, DB
+from itemize.api._deps import MatchUsernameSlug, DB, CurrentUserIfAuthenticated
 
-from fastapi import APIRouter, Body, Query
+from fastapi import APIRouter, Body
 
 from typing import Annotated
 
 router = APIRouter(prefix='/itemize')
 
 
-@router.get('/{username}', dependencies=[MatchUsernameSlug])
-async def list_itemizes(username: str, session: DB, query: str | None = None) -> schemas.ListItemizesResponse:
+@router.get('/{username}')
+async def list_itemizes(username: str, user: CurrentUserIfAuthenticated, session: DB, query: str | None = None) -> schemas.ListItemizesResponse:
     itemizes = await itemize.list_itemizes(
         session,
+        user,
         username=username,
         query=query
     )
@@ -36,15 +37,31 @@ async def create_itemize(username: str, req: Annotated[schemas.CreateItemizeRequ
     )
 
 
-@router.get('/{username}/{itemize_slug}', dependencies=[MatchUsernameSlug])
-async def get_itemize(username: str, itemize_slug: str, session: DB, query: str | None = None) -> schemas.GetItemizeResponse:
+@router.get('/{username}/{itemize_slug}')
+async def get_itemize(username: str, itemize_slug: str, session: DB, user: CurrentUserIfAuthenticated, query: str | None = None) -> schemas.GetItemizeResponse:
     itemize_ = await itemize.get_itemize(
         session,
+        user,
         username=username,
         slug=itemize_slug,
         query=query
     )
     return schemas.GetItemizeResponse(
+        itemize=itemize_
+    )
+
+
+@router.patch('/{username}/{itemize_slug}', dependencies=[MatchUsernameSlug])
+async def update_itemize(username: str, itemize_slug: str, req: Annotated[schemas.UpdateItemizeRequest, Body()], session: DB) -> schemas.UpdateItemizeResponse:
+    itemize_ = await itemize.update_itemize(
+        session,
+        username=username,
+        slug=itemize_slug,
+        name=req.name,
+        description=req.description,
+        public=req.public,
+    )
+    return schemas.UpdateItemizeResponse(
         itemize=itemize_
     )
 

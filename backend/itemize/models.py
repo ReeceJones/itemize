@@ -195,6 +195,7 @@ class Itemize(Base):
     slug: Mapped[str] = mapped_column(index=True)
     description: Mapped[str | None]
     user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
+    public: Mapped[bool] = mapped_column(default=False)
     user: Mapped[User] = relationship('User', back_populates='itemizes', lazy='raise')
     links: Mapped[list[Link]] = relationship('Link', back_populates='itemize', lazy='raise')
 
@@ -228,6 +229,7 @@ class Itemize(Base):
             slug=self.slug,
             description=self.description,
             user_id=self.user_id,
+            public=self.public,
             user=user,
             links=links,
         )

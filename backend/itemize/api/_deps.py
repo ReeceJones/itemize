@@ -47,6 +47,17 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
 CurrentUser = Annotated[schemas.User, Depends(get_current_user)]
 
 
+async def get_current_user_if_authenticated(request: Request, session: DB) -> schemas.User | None:
+    try:
+        token = await oauth2_scheme(request)
+        return await get_current_user(token, session)
+    except HTTPException:
+        return None
+
+
+CurrentUserIfAuthenticated = Annotated[schemas.User | None, Depends(get_current_user_if_authenticated)]
+
+
 async def match_username_slug(request: Request, user: CurrentUser):
     if request.path_params['username'] != user.username:
         raise HTTPException(

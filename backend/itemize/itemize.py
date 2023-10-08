@@ -49,8 +49,8 @@ async def create_itemize(session: AsyncSession, name: str, description: str | No
     return await itemize.to_schema()
     
 
-async def list_itemizes(session: AsyncSession, username: str, *, query: str | None = None) -> list[schemas.Itemize]:
-    itemizes = await session.scalars(
+async def list_itemizes(session: AsyncSession, user: schemas.User | None, username: str, *, query: str | None = None) -> list[schemas.Itemize]:
+    stmt =(
         select(models.Itemize)
         .join(
             models.User
@@ -65,6 +65,11 @@ async def list_itemizes(session: AsyncSession, username: str, *, query: str | No
             selectinload(models.Itemize.user)
         )
     )
+
+    if user is None or user.username != username:
+        stmt = stmt.where(models.Itemize.public == True)
+
+    itemizes = await session.scalars(stmt)
     return [
         await itemize.to_schema()
         for itemize in itemizes
@@ -76,7 +81,8 @@ async def list_itemizes(session: AsyncSession, username: str, *, query: str | No
     ]
 
 
-async def get_itemize(session: AsyncSession, username: str, slug: str, *, query: str | None = None) -> schemas.Itemize:
+async def get_itemize(session: AsyncSession, user: schemas.User | None, username: str, slug: str, *, query: str | None = None) -> schemas.Itemize:
+    itemize_error = ItemizeNotFoundError('Itemize not found!')
     itemize = await session.scalar(
         select(models.Itemize)
         .join(
@@ -94,9 +100,51 @@ async def get_itemize(session: AsyncSession, username: str, slug: str, *, query:
         )
     )
     if itemize is None:
-        raise ItemizeNotFoundError('Itemize not found!')
+        raise itemize_error
+    
+    if not itemize.public and (user is None or user.username != username):
+        raise itemize_error
     
     return await itemize.to_schema(link_query=query)
+
+
+async def update_itemize(session: AsyncSession, username: str, slug: str, *, name: str | None = None, description: str | None = None, public: bool | None = None) -> schemas.Itemize:
+    itemize = await session.scalar(
+        select(models.Itemize)
+        .join(
+            models.User
+        )
+        .where(
+            models.User.username == username,
+            models.Itemize.slug == slug,
+        )
+    )
+    if itemize is None:
+        raise ItemizeNotFoundError('Itemize not found!')
+    
+    if name is not None:
+        new_slug = util.slugify(name)
+        existing_slug = await session.scalar(
+            select(
+                func.count()
+            )
+            .select_from(models.Itemize)
+            .where(
+                models.Itemize.slug == new_slug,
+            )
+        )
+        if existing_slug > 0:
+            raise ItemizeExistsError('Itemize with this name already exists!')
+        itemize.name = name
+        itemize.slug = new_slug
+    if description is not None:
+        itemize.description = description
+    if public is not None:
+        itemize.public = public
+    await session.commit()
+    await session.refresh(itemize)
+
+    return await itemize.to_schema()
 
 
 async def create_link(session: AsyncSession, username: str, slug: str, url: str) -> schemas.Link:

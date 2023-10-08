@@ -71,6 +71,7 @@ class Itemize(DBModel):
     slug: str
     description: str | None
     user_id: int
+    public: bool
     user: User | None
     links: list[Link] | None
 
@@ -150,3 +151,13 @@ class UpdateLinkMetadataRequest(APIRequest):
 
 class UpdateLinkMetadataResponse(APIResponse):
     link: Link
+
+
+class UpdateItemizeRequest(APIRequest):
+    name: str | None
+    description: str | None
+    public: bool | None
+
+
+class UpdateItemizeResponse(APIResponse):
+    itemize: Itemize

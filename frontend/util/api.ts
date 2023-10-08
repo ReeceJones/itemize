@@ -53,8 +53,15 @@ export interface Itemize {
     slug: string
     description: string | null
     user_id: number
+    public: boolean
     user: User | null
     links: Link[]
+}
+
+export interface ItemizeUpdate {
+    name: string | null
+    description: string | null
+    public: boolean | null
 }
 
 interface ItemizeContextHook {
@@ -69,6 +76,7 @@ export const ItemizeContext = createContext<ItemizeContextHook>({
         slug: '',
         description: '',
         user_id: 0,
+        public: false,
         user: null,
         links: [],
     },
@@ -172,6 +180,22 @@ export async function getItemize(username: string, slug: string, query: string |
             'Authorization': localStorage.getItem('auth_header') || '',
         },
         
+    })
+    if (response.status != 200) {
+        const j = await response.json()
+        throw new Error(j['detail'])
+    }
+    return (await response.json())['itemize']
+}
+
+export async function updateItemize(username: string, slug: string, update: ItemizeUpdate): Promise<Itemize> {
+    const response = await fetch(`${API_SERVER}/itemize/${username}/${slug}`, {
+        method: 'PATCH',
+        headers: {
+            'Authorization': localStorage.getItem('auth_header') || '',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(update),
     })
     if (response.status != 200) {
         const j = await response.json()
