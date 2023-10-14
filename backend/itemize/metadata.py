@@ -292,12 +292,12 @@ class MetadataParser:
         return str(grouped_values['@value'])
 
 
-async def get_metadata_image(session: AsyncSession, metadata_image_id: int) -> schemas.MetadataImage:
+async def get_metadata_image(session: AsyncSession, metadata_image_id: int) -> models.MetadataImage:
     logging.info('hello world')
     image = await session.scalar(select(models.MetadataImage).where(models.MetadataImage.id == metadata_image_id))
     if image is None:
         raise errors.ImageNotFoundError('Image not found!')
-    return await image.to_schema()
+    return image
 
 
 async def get_metadata_from_db(session: AsyncSession, url: str) -> schemas.PageMetadata | None:

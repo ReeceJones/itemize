@@ -23,7 +23,6 @@ class MetadataImage(DBModel):
     mime: str | None
     source_image_url: str | None
     url: str | None
-    data: bytes | None
 
 
 class PageMetadata(DBModel):

@@ -46,7 +46,6 @@ class MetadataImage(Base):
             **(await super().to_dict()),
             mime=self.mime,
             source_image_url=self.source_image_url,
-            data=self.data,
             url=self.url,
         )
 
