@@ -19,11 +19,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r backend/requirements.txt
-        pip install mypy
-        mypy --install-types --non-interactive
+        pip install -r backend/requirements.dev
     - name: Run mypy
       run: |
-        python -m mypy backend/itemize
+        cd backend/
+        python -m mypy itemize
   
   test-migrations:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
         pip install -r backend/requirements.txt
     - name: Run migrations
       env:
-        DB_URI: test.sqlite
+        DB_URI: sqlite+aiosqlite:///./test.sqlite
       run: |
         cd backend
         alembic upgrade head
