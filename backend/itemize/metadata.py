@@ -21,6 +21,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from typing import Any
+
 
 class MetadataParser:
     def __init__(self, data: str, url: str) -> None:
@@ -106,23 +108,29 @@ class MetadataParser:
         if 'dublincore' not in self._metadata:
             return None
 
-        key_translations = {}
+        key_translations: dict[str, str] = {}
         if key in key_translations:
             key = key_translations[key]
 
+        elements = map(
+            lambda x: x['elements'],
+            self._metadata['dublincore']
+        )
+
+        combined_elements: list[dict[str, Any]] = reduce(
+            lambda x, y: x + y,
+            elements,
+            []
+        )
+
+        filtered_elements = filter(
+            lambda x: x['name'] == key,
+            combined_elements
+        )
+
         content = next(map(
             lambda x: x['content'],
-            filter(
-                lambda x: x['name'] == key,
-                reduce(
-                    lambda x, y: x + y,
-                    map(
-                        lambda x: x['elements'],
-                        self._metadata['dublincore']
-                    ),
-                    []
-                )
-            )
+            filtered_elements
         ), None)
         
         if content is None:
@@ -217,7 +225,7 @@ class MetadataParser:
         if key in key_translations:
             key = key_translations[key]
 
-        properties = reduce(
+        properties: dict[str, Any] = reduce(
             lambda x, y: y | x,
             self._metadata['opengraph'],
             {}
@@ -273,7 +281,7 @@ class MetadataParser:
         if value is None:
             return None
 
-        grouped_values = reduce(
+        grouped_values: dict[str, Any] = reduce(
             lambda x, y: y | x,
             value,
             {}
@@ -289,7 +297,7 @@ async def get_metadata_image(session: AsyncSession, metadata_image_id: int) -> s
     image = await session.scalar(select(models.MetadataImage).where(models.MetadataImage.id == metadata_image_id))
     if image is None:
         raise errors.ImageNotFoundError('Image not found!')
-    return image
+    return await image.to_schema()
 
 
 async def get_metadata_from_db(session: AsyncSession, url: str) -> schemas.PageMetadata | None:
@@ -358,7 +366,7 @@ async def save_metadata(
             metadata.image_id = image.id
             await session.commit()
             await session.refresh(metadata, ['image'])
-    else:
+    elif metadata.image_url is not None:
         async with httpx.AsyncClient(follow_redirects=True) as client:
             user_agent_header = fake_useragent.UserAgent().random
             response = await client.get(metadata.image_url, headers={'User-Agent': user_agent_header})

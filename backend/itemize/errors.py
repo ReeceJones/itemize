@@ -57,7 +57,7 @@ class InvalidCredentialsError(UserError):
     pass
 
 
-async def handle_fastapi_exception(r: Request, e: BaseError) -> None:
+async def handle_fastapi_exception(r: Request, e: BaseError) -> JSONResponse:
     match e:
         case ItemizeExistsError(msg):
             return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={'detail': msg})

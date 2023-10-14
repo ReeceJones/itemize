@@ -17,7 +17,7 @@ async def append_metadata_list(session: AsyncSession, metadatas: list[schemas.Pa
 
 @router.post('')
 async def get_metadata_for_urls(request: schemas.PageMetadataRequest, _: CurrentUser, session: DB) -> schemas.PageMetadataResponse:
-    metadatas = []
+    metadatas: list[schemas.PageMetadata] = []
     async with asyncio.TaskGroup() as tg:
         for url in request.urls:
             tg.create_task(append_metadata_list(session, metadatas, url))

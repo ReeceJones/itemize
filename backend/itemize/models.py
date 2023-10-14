@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 
 class Base(DeclarativeBase):
-    @declared_attr
+    @declared_attr.directive
     def __tablename__(cls) -> str:
         return cls.__name__.lower()
     
@@ -33,7 +33,7 @@ class Base(DeclarativeBase):
 class MetadataImage(Base):
     mime: Mapped[str | None]
     data: Mapped[bytes | None] = mapped_column(default=None)
-    source_image_url: Mapped[str | None] = None
+    source_image_url: Mapped[str | None] = mapped_column(default=None)
 
     @property
     def url(self) -> str | None:
@@ -46,6 +46,7 @@ class MetadataImage(Base):
             **(await super().to_dict()),
             mime=self.mime,
             source_image_url=self.source_image_url,
+            data=self.data,
             url=self.url,
         )
 

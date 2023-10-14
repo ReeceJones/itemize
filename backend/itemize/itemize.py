@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def create_itemize(session: AsyncSession, name: str, description: str | None, username: str) -> None:
+async def create_itemize(session: AsyncSession, name: str, description: str | None, username: str) -> schemas.Itemize:
     slug = util.slugify(name)
     existing_slug = await session.scalar(
         select(
@@ -20,7 +20,7 @@ async def create_itemize(session: AsyncSession, name: str, description: str | No
         .where(
             models.Itemize.slug == slug,
         )
-    )
+    ) or 0
     if existing_slug > 0:
         raise ItemizeExistsError('Itemize with this name already exists!')
 
@@ -132,7 +132,7 @@ async def update_itemize(session: AsyncSession, username: str, slug: str, *, nam
             .where(
                 models.Itemize.slug == new_slug,
             )
-        )
+        ) or 0
         if existing_slug > 0:
             raise ItemizeExistsError('Itemize with this name already exists!')
         itemize.name = name
@@ -216,6 +216,9 @@ async def update_link_metadata(
         link.page_metadata_override_id = link.page_metadata_override.id
         await session.commit()
         await session.refresh(link, ['page_metadata_override'])
+
+    if link.page_metadata_override is None:
+        raise MetadataUnprocessableError('Could not get or create metadata override!')
 
     if image_url is not None:
         link.page_metadata_override.image_url = image_url

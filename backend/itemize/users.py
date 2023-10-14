@@ -31,7 +31,7 @@ async def check_email_exists(session: AsyncSession, email: str) -> bool:
         .where(
             models.User.email == email,
         )
-    )
+    ) or 0
 
     return existing_user > 0
     
@@ -48,7 +48,7 @@ async def check_username_exists(session: AsyncSession, username: str) -> bool:
         .where(
             models.User.username == username,
         )
-    )
+    ) or 0
 
     return existing_user > 0
 
@@ -68,7 +68,7 @@ async def create_user(session: AsyncSession, username: str, email: str, password
                 models.User.email == email,
             )
         )
-    )
+    ) or 0
 
     if existing_user > 0:
         raise UserExistsError('Username or Email already in use!')

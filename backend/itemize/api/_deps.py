@@ -50,6 +50,8 @@ CurrentUser = Annotated[schemas.User, Depends(get_current_user)]
 async def get_current_user_if_authenticated(request: Request, session: DB) -> schemas.User | None:
     try:
         token = await oauth2_scheme(request)
+        if token is None:
+            return None
         return await get_current_user(token, session)
     except HTTPException:
         return None
