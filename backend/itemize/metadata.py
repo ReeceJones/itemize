@@ -29,13 +29,17 @@ class MetadataParser:
         self._data = data
         self._url = url
 
-
         if CONFIG.PARSER_LOG_PAGEDATA:
-            pathlib.Path('pagedata').mkdir(exist_ok=True)
-            with open(f'pagedata/{datetime.utcnow().isoformat()}.html', 'w') as f:
+            pathlib.Path("pagedata").mkdir(exist_ok=True)
+            with open(f"pagedata/{datetime.utcnow().isoformat()}.html", "w") as f:
                 f.write(self._data)
 
-        self._metadata = extruct.extract(data, base_url=w3lib.html.get_base_url(data, str(url)), uniform=True, errors='log')
+        self._metadata = extruct.extract(
+            data,
+            base_url=w3lib.html.get_base_url(data, str(url)),
+            uniform=True,
+            errors="log",
+        )
 
         # fields
         self.title: str | None = None
@@ -46,33 +50,25 @@ class MetadataParser:
         self.currency: str | None = None
 
     def parse(self) -> None:
-
         logging.info(json.dumps(self._metadata))
-        
+
         parer_get_methods = {
-            'dublincore': self._dublincore_get,
-            'json-ld': self._json_ld_get,
+            "dublincore": self._dublincore_get,
+            "json-ld": self._json_ld_get,
             # 'microdata': self._microdata_get,
             # 'microformat': self._microformat_get,
-            'opengraph': self._opengraph_get,
-            'rdfa': self._rdfa_get
+            "opengraph": self._opengraph_get,
+            "rdfa": self._rdfa_get,
         }
         format_rank = [
-            'opengraph',
-            'rdfa',
-            'json-ld',
-            'dublincore',
-            'microdata',
-            'microformat'
+            "opengraph",
+            "rdfa",
+            "json-ld",
+            "dublincore",
+            "microdata",
+            "microformat",
         ]
-        fields = [
-            'title',
-            'site_name',
-            'description',
-            'image_url',
-            'price',
-            'currency'
-        ]
+        fields = ["title", "site_name", "description", "image_url", "price", "currency"]
 
         for format in format_rank:
             if format not in parer_get_methods:
@@ -84,7 +80,7 @@ class MetadataParser:
                 value = get(field)
                 if value is not None:
                     setattr(self, field, value)
-            
+
     def _dublincore_get(self, key: str) -> str | None:
         """
         Parse dublincore metadata.
@@ -105,34 +101,23 @@ class MetadataParser:
             ...
         ]
         """
-        if 'dublincore' not in self._metadata:
+        if "dublincore" not in self._metadata:
             return None
 
         key_translations: dict[str, str] = {}
         if key in key_translations:
             key = key_translations[key]
 
-        elements = map(
-            lambda x: x['elements'],
-            self._metadata['dublincore']
-        )
+        elements = map(lambda x: x["elements"], self._metadata["dublincore"])
 
         combined_elements: list[dict[str, Any]] = reduce(
-            lambda x, y: x + y,
-            elements,
-            []
+            lambda x, y: x + y, elements, []
         )
 
-        filtered_elements = filter(
-            lambda x: x['name'] == key,
-            combined_elements
-        )
+        filtered_elements = filter(lambda x: x["name"] == key, combined_elements)
 
-        content = next(map(
-            lambda x: x['content'],
-            filtered_elements
-        ), None)
-        
+        content = next(map(lambda x: x["content"], filtered_elements), None)
+
         if content is None:
             return None
         return str(content)
@@ -151,31 +136,34 @@ class MetadataParser:
             }
         ]
         """
-        if 'json-ld' not in self._metadata:
+        if "json-ld" not in self._metadata:
             return None
 
         key_translations = {
-            'title': 'name',
-            'image_url': 'image',
+            "title": "name",
+            "image_url": "image",
         }
         key_types = {
-            'title': 'Product',
-            'description': 'Product',
-            'image_url': 'Product',
-            'price': 'Product',
-            'currency': 'Product',
-            'site_name': 'Organization'
+            "title": "Product",
+            "description": "Product",
+            "image_url": "Product",
+            "price": "Product",
+            "currency": "Product",
+            "site_name": "Organization",
         }
-        properties = next(filter(
-            lambda x: x['@type'] == key_types.get(key, 'Product'),
-            self._metadata['json-ld']
-        ), None)
+        properties = next(
+            filter(
+                lambda x: x["@type"] == key_types.get(key, "Product"),
+                self._metadata["json-ld"],
+            ),
+            None,
+        )
         if properties is None:
             return None
-        
+
         if key in key_translations:
             key = key_translations[key]
-        
+
         value = properties.get(key, None)
         if value is None:
             return None
@@ -211,24 +199,22 @@ class MetadataParser:
             ...
         ]
         """
-        if 'opengraph' not in self._metadata:
+        if "opengraph" not in self._metadata:
             return None
 
         key_translations = {
-            'title': 'og:title',
-            'site_name': 'og:site_name',
-            'description': 'og:description',
-            'image_url': 'og:image',
-            'price': 'product:price:amount',
-            'currency': 'product:price:currency'
+            "title": "og:title",
+            "site_name": "og:site_name",
+            "description": "og:description",
+            "image_url": "og:image",
+            "price": "product:price:amount",
+            "currency": "product:price:currency",
         }
         if key in key_translations:
             key = key_translations[key]
 
         properties: dict[str, Any] = reduce(
-            lambda x, y: y | x,
-            self._metadata['opengraph'],
-            {}
+            lambda x, y: y | x, self._metadata["opengraph"], {}
         )
 
         value = properties.get(key, None)
@@ -255,52 +241,52 @@ class MetadataParser:
             }
         ]
         """
-        if 'rdfa' not in self._metadata:
+        if "rdfa" not in self._metadata:
             return None
 
         key_translations = {
-            'title': 'http://ogp.me/ns#title',
-            'site_name': 'http://ogp.me/ns#site_name',
-            'description': 'http://ogp.me/ns#description',
-            'image_url': 'http://ogp.me/ns#image',
-            'price': 'product:price:amount',
-            'currency': 'product:price:currency'
+            "title": "http://ogp.me/ns#title",
+            "site_name": "http://ogp.me/ns#site_name",
+            "description": "http://ogp.me/ns#description",
+            "image_url": "http://ogp.me/ns#image",
+            "price": "product:price:amount",
+            "currency": "product:price:currency",
         }
         if key in key_translations:
             key = key_translations[key]
 
-        page_properties = next(filter(
-            lambda x: x['@id'] == self._url,
-            self._metadata['rdfa']
-        ), None)
+        page_properties = next(
+            filter(lambda x: x["@id"] == self._url, self._metadata["rdfa"]), None
+        )
 
         if page_properties is None:
             return None
-        
+
         value = page_properties.get(key, None)
         if value is None:
             return None
 
-        grouped_values: dict[str, Any] = reduce(
-            lambda x, y: y | x,
-            value,
-            {}
-        )
-        if '@value' not in grouped_values:
+        grouped_values: dict[str, Any] = reduce(lambda x, y: y | x, value, {})
+        if "@value" not in grouped_values:
             return None
-        
-        return str(grouped_values['@value'])
+
+        return str(grouped_values["@value"])
 
 
-async def get_metadata_image(session: AsyncSession, metadata_image_id: int) -> models.MetadataImage:
-    logging.info('hello world')
-    image = await session.scalar(select(models.MetadataImage).where(models.MetadataImage.id == metadata_image_id))
+async def get_metadata_image(
+    session: AsyncSession, metadata_image_id: int
+) -> models.MetadataImage:
+    image = await session.scalar(
+        select(models.MetadataImage).where(models.MetadataImage.id == metadata_image_id)
+    )
     if image is None:
-        raise errors.ImageNotFoundError('Image not found!')
+        raise errors.ImageNotFoundError("Image not found!")
     return image
 
 
-async def get_metadata_from_db(session: AsyncSession, url: str) -> schemas.PageMetadata | None:
+async def get_metadata_from_db(
+    session: AsyncSession, url: str
+) -> schemas.PageMetadata | None:
     metadata = await session.scalar(
         select(models.PageMetadata)
         .where(models.PageMetadata.url == url)
@@ -310,18 +296,21 @@ async def get_metadata_from_db(session: AsyncSession, url: str) -> schemas.PageM
         return None
     return await metadata.to_schema()
 
+
 async def save_metadata(
-        session: AsyncSession,
-        *,
-        url: str,
-        title: str | None,
-        description: str | None,
-        site_name: str | None,
-        image_url: str | None,
-        price: str | None,
-        currency: str | None,
+    session: AsyncSession,
+    *,
+    url: str,
+    title: str | None,
+    description: str | None,
+    site_name: str | None,
+    image_url: str | None,
+    price: str | None,
+    currency: str | None,
 ) -> schemas.PageMetadata:
-    metadata = await session.scalar(select(models.PageMetadata).where(models.PageMetadata.url == url))
+    metadata = await session.scalar(
+        select(models.PageMetadata).where(models.PageMetadata.url == url)
+    )
     if metadata is not None:
         metadata.title = title
         metadata.description = description
@@ -337,58 +326,63 @@ async def save_metadata(
             site_name=site_name,
             image_url=image_url,
             price=price,
-            currency=currency
+            currency=currency,
         )
         session.add(metadata)
     await session.commit()
     await session.refresh(metadata)
 
-    # May be useful in the future: https://stackoverflow.com/questions/59270710/python-pyppeteer-proxy-usage
-    if metadata.image_url in (None, ''):
+    # https://stackoverflow.com/questions/59270710/python-pyppeteer-proxy-usage
+    if metadata.image_url in (None, ""):
         if CONFIG.SCREENSHOT_PAGE:
             browser = await pyppeteer.launch()
             try:
                 page = await browser.newPage()
                 await page.goto(metadata.url)
-                ss = await page.screenshot({'type': 'jpeg'})
+                ss = await page.screenshot({"type": "jpeg"})
             finally:
                 await browser.close()
             if isinstance(ss, str):
-                ss = ss.encode('utf-8')
+                ss = ss.encode("utf-8")
             image = models.MetadataImage(
-                mime='image/jpeg',
-                data=ss,
-                source_image_url=metadata.url
+                mime="image/jpeg", data=ss, source_image_url=metadata.url
             )
             session.add(image)
             await session.commit()
             await session.refresh(image)
             metadata.image_id = image.id
             await session.commit()
-            await session.refresh(metadata, ['image'])
+            await session.refresh(metadata, ["image"])
     elif metadata.image_url is not None:
         async with httpx.AsyncClient(follow_redirects=True) as client:
             user_agent_header = fake_useragent.UserAgent().random
-            response = await client.get(metadata.image_url, headers={'User-Agent': user_agent_header})
-            logging.debug(f'Got response for downloading image: {response.status_code=} {response.headers=} {response.content=}')
+            response = await client.get(
+                metadata.image_url, headers={"User-Agent": user_agent_header}
+            )
+            logging.debug(
+                f"Got response for downloading image: {response.status_code=}"
+                f" {response.headers=} {response.content=}"
+            )
             if response.status_code == 200:
                 image = models.MetadataImage(
-                    mime=response.headers.get('Content-Type', None),
+                    mime=response.headers.get("Content-Type", None),
                     data=response.content,
-                    source_image_url=metadata.image_url
+                    source_image_url=metadata.image_url,
                 )
                 session.add(image)
                 await session.commit()
                 await session.refresh(image)
                 metadata.image_id = image.id
                 await session.commit()
-                await session.refresh(metadata, ['image'])
+                await session.refresh(metadata, ["image"])
 
     db_schema = await metadata.to_schema()
     return db_schema
 
 
-async def get_metadata(session: AsyncSession, url: str, *, cache_only: bool = False) -> schemas.PageMetadata | None:
+async def get_metadata(
+    session: AsyncSession, url: str, *, cache_only: bool = False
+) -> schemas.PageMetadata | None:
     if (metadata := await get_metadata_from_db(session, url)) is not None:
         return metadata
     if cache_only:
@@ -396,12 +390,19 @@ async def get_metadata(session: AsyncSession, url: str, *, cache_only: bool = Fa
 
     async with httpx.AsyncClient() as client:
         user_agent_header = fake_useragent.UserAgent().random
-        response = await client.get(url, headers={'User-Agent': user_agent_header})
+        response = await client.get(url, headers={"User-Agent": user_agent_header})
 
     parser = MetadataParser(response.text, str(response.url))
     parser.parse()
 
-    logging.info(f'{parser.title=} {parser.site_name=} {parser.description=} {parser.image_url=} {parser.price=} {parser.currency=}')
+    logging.info(
+        f"{parser.title=} "
+        f"{parser.site_name=} "
+        f"{parser.description=} "
+        f"{parser.image_url=} "
+        f"{parser.price=} "
+        f"{parser.currency=}"
+    )
     return await save_metadata(
         session,
         url=url,
@@ -410,5 +411,5 @@ async def get_metadata(session: AsyncSession, url: str, *, cache_only: bool = Fa
         site_name=parser.site_name,
         image_url=parser.image_url,
         price=parser.price,
-        currency=parser.currency
+        currency=parser.currency,
     )

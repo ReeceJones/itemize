@@ -3,38 +3,45 @@ from itemize import schemas
 from itemize import models
 from itemize import metadata
 
-from itemize.errors import ItemizeExistsError, ItemizeNotFoundError, ItemizeLinkNotFoundError, MetadataUnprocessableError, UserNotFoundError
+from itemize.errors import (
+    ItemizeExistsError,
+    ItemizeNotFoundError,
+    ItemizeLinkNotFoundError,
+    MetadataUnprocessableError,
+    UserNotFoundError,
+)
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def create_itemize(session: AsyncSession, name: str, description: str | None, username: str) -> schemas.Itemize:
+async def create_itemize(
+    session: AsyncSession, name: str, description: str | None, username: str
+) -> schemas.Itemize:
     slug = util.slugify(name)
-    existing_slug = await session.scalar(
-        select(
-            func.count()
+    existing_slug = (
+        await session.scalar(
+            select(func.count())
+            .select_from(models.Itemize)
+            .where(
+                models.Itemize.slug == slug,
+            )
         )
-        .select_from(models.Itemize)
-        .where(
-            models.Itemize.slug == slug,
-        )
-    ) or 0
+        or 0
+    )
     if existing_slug > 0:
-        raise ItemizeExistsError('Itemize with this name already exists!')
+        raise ItemizeExistsError("Itemize with this name already exists!")
 
     user_id = await session.scalar(
-        select(
-            models.User.id
-        )
+        select(models.User.id)
         .select_from(select(models.User).subquery())
         .where(
             models.User.username == username,
         )
     )
     if user_id is None:
-        raise UserNotFoundError('User not found!')
+        raise UserNotFoundError("User not found!")
 
     itemize = models.Itemize(
         name=name,
@@ -44,97 +51,123 @@ async def create_itemize(session: AsyncSession, name: str, description: str | No
     )
     session.add(itemize)
     await session.commit()
-    await session.refresh(itemize, ['user'])
+    await session.refresh(itemize, ["user"])
 
     return await itemize.to_schema()
-    
 
-async def list_itemizes(session: AsyncSession, user: schemas.User | None, username: str, *, query: str | None = None) -> list[schemas.Itemize]:
-    stmt =(
+
+async def list_itemizes(
+    session: AsyncSession,
+    user: schemas.User | None,
+    username: str,
+    *,
+    query: str | None = None,
+) -> list[schemas.Itemize]:
+    stmt = (
         select(models.Itemize)
-        .join(
-            models.User
-        )
+        .join(models.User)
         .where(
             models.User.username == username,
         )
         .options(
             selectinload(models.Itemize.links),
             selectinload(models.Itemize.links).selectinload(models.Link.page_metadata),
-            selectinload(models.Itemize.links).selectinload(models.Link.page_metadata_override),
-            selectinload(models.Itemize.user)
+            selectinload(models.Itemize.links).selectinload(
+                models.Link.page_metadata_override
+            ),
+            selectinload(models.Itemize.user),
         )
     )
 
     if user is None or user.username != username:
-        stmt = stmt.where(models.Itemize.public == True)
+        stmt = stmt.where(models.Itemize.public == True)  # noqa: E712
 
     itemizes = await session.scalars(stmt)
     return [
         await itemize.to_schema()
         for itemize in itemizes
-        if  query is None or (
+        if query is None
+        or (
             query in itemize.name.lower()
-            or query in (itemize.description or '').lower()
-            or (itemize.user is not None and query in (itemize.user.username or '').lower())
+            or query in (itemize.description or "").lower()
+            or (
+                itemize.user is not None
+                and query in (itemize.user.username or "").lower()
+            )
         )
     ]
 
 
-async def get_itemize(session: AsyncSession, user: schemas.User | None, username: str, slug: str, *, query: str | None = None) -> schemas.Itemize:
-    itemize_error = ItemizeNotFoundError('Itemize not found!')
+async def get_itemize(
+    session: AsyncSession,
+    user: schemas.User | None,
+    username: str,
+    slug: str,
+    *,
+    query: str | None = None,
+) -> schemas.Itemize:
+    itemize_error = ItemizeNotFoundError("Itemize not found!")
     itemize = await session.scalar(
         select(models.Itemize)
-        .join(
-            models.User
-        )
+        .join(models.User)
         .where(
             models.User.username == username,
             models.Itemize.slug == slug,
         )
         .options(
             selectinload(models.Itemize.links),
-            selectinload(models.Itemize.links).selectinload(models.Link.page_metadata).selectinload(models.PageMetadata.image),
+            selectinload(models.Itemize.links)
+            .selectinload(models.Link.page_metadata)
+            .selectinload(models.PageMetadata.image),
             selectinload(models.Itemize.user),
-            selectinload(models.Itemize.links).selectinload(models.Link.page_metadata_override).selectinload(models.PageMetadataOverride.image),
+            selectinload(models.Itemize.links)
+            .selectinload(models.Link.page_metadata_override)
+            .selectinload(models.PageMetadataOverride.image),
         )
     )
     if itemize is None:
         raise itemize_error
-    
+
     if not itemize.public and (user is None or user.username != username):
         raise itemize_error
-    
+
     return await itemize.to_schema(link_query=query)
 
 
-async def update_itemize(session: AsyncSession, username: str, slug: str, *, name: str | None = None, description: str | None = None, public: bool | None = None) -> schemas.Itemize:
+async def update_itemize(
+    session: AsyncSession,
+    username: str,
+    slug: str,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    public: bool | None = None,
+) -> schemas.Itemize:
     itemize = await session.scalar(
         select(models.Itemize)
-        .join(
-            models.User
-        )
+        .join(models.User)
         .where(
             models.User.username == username,
             models.Itemize.slug == slug,
         )
     )
     if itemize is None:
-        raise ItemizeNotFoundError('Itemize not found!')
-    
+        raise ItemizeNotFoundError("Itemize not found!")
+
     if name is not None:
         new_slug = util.slugify(name)
-        existing_slug = await session.scalar(
-            select(
-                func.count()
+        existing_slug = (
+            await session.scalar(
+                select(func.count())
+                .select_from(models.Itemize)
+                .where(
+                    models.Itemize.slug == new_slug,
+                )
             )
-            .select_from(models.Itemize)
-            .where(
-                models.Itemize.slug == new_slug,
-            )
-        ) or 0
+            or 0
+        )
         if existing_slug > 0:
-            raise ItemizeExistsError('Itemize with this name already exists!')
+            raise ItemizeExistsError("Itemize with this name already exists!")
         itemize.name = name
         itemize.slug = new_slug
     if description is not None:
@@ -147,55 +180,47 @@ async def update_itemize(session: AsyncSession, username: str, slug: str, *, nam
     return await itemize.to_schema()
 
 
-async def create_link(session: AsyncSession, username: str, slug: str, url: str) -> schemas.Link:
+async def create_link(
+    session: AsyncSession, username: str, slug: str, url: str
+) -> schemas.Link:
     metadata_ = await metadata.get_metadata(session, url)
     if metadata_ is None:
-        raise MetadataUnprocessableError('Could not get metadata for url!')
+        raise MetadataUnprocessableError("Could not get metadata for url!")
     itemize = await session.scalar(
         select(models.Itemize)
-        .join(
-            models.User
-        )
+        .join(models.User)
         .where(
             models.User.username == username,
             models.Itemize.slug == slug,
         )
     )
     if itemize is None:
-        raise ItemizeNotFoundError('Itemize not found!')
-    
-    link = models.Link(
-        url=url,
-        page_metadata_id=metadata_.id,
-        itemize_id=itemize.id
-    )
+        raise ItemizeNotFoundError("Itemize not found!")
+
+    link = models.Link(url=url, page_metadata_id=metadata_.id, itemize_id=itemize.id)
     session.add(link)
     await session.commit()
-    
+
     return await link.to_schema()
 
 
 async def update_link_metadata(
-        session: AsyncSession,
-        username: str,
-        slug: str,
-        link_id: int,
-        *,
-        image_url: str | None = None,
-        title: str | None = None,
-        description: str | None = None,
-        site_name: str | None = None,
-        price: str | None = None,
-        currency: str | None = None,    
-    ) -> schemas.Link:
+    session: AsyncSession,
+    username: str,
+    slug: str,
+    link_id: int,
+    *,
+    image_url: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+    site_name: str | None = None,
+    price: str | None = None,
+    currency: str | None = None,
+) -> schemas.Link:
     link = await session.scalar(
         select(models.Link)
-        .join(
-            models.Itemize
-        )
-        .join(
-            models.User
-        )
+        .join(models.Itemize)
+        .join(models.User)
         .where(
             models.User.username == username,
             models.Itemize.slug == slug,
@@ -206,8 +231,8 @@ async def update_link_metadata(
         )
     )
     if link is None:
-        raise ItemizeLinkNotFoundError('Link not found!')
-    
+        raise ItemizeLinkNotFoundError("Link not found!")
+
     if link.page_metadata_override_id is None:
         link.page_metadata_override = models.PageMetadataOverride()
         session.add(link.page_metadata_override)
@@ -215,10 +240,10 @@ async def update_link_metadata(
         await session.refresh(link.page_metadata_override)
         link.page_metadata_override_id = link.page_metadata_override.id
         await session.commit()
-        await session.refresh(link, ['page_metadata_override'])
+        await session.refresh(link, ["page_metadata_override"])
 
     if link.page_metadata_override is None:
-        raise MetadataUnprocessableError('Could not get or create metadata override!')
+        raise MetadataUnprocessableError("Could not get or create metadata override!")
 
     if image_url is not None:
         link.page_metadata_override.image_url = image_url
@@ -233,20 +258,18 @@ async def update_link_metadata(
     if currency is not None:
         link.page_metadata_override.currency = currency
     await session.commit()
-    await session.refresh(link, ['page_metadata_override', 'page_metadata'])
+    await session.refresh(link, ["page_metadata_override", "page_metadata"])
 
     return await link.to_schema()
 
 
-async def delete_link(session: AsyncSession, username: str, slug: str, link_id: int) -> None:
+async def delete_link(
+    session: AsyncSession, username: str, slug: str, link_id: int
+) -> None:
     link = await session.scalar(
         select(models.Link)
-        .join(
-            models.Itemize
-        )
-        .join(
-            models.User
-        )
+        .join(models.Itemize)
+        .join(models.User)
         .where(
             models.User.username == username,
             models.Itemize.slug == slug,
@@ -254,6 +277,6 @@ async def delete_link(session: AsyncSession, username: str, slug: str, link_id: 
         )
     )
     if link is None:
-        raise ItemizeLinkNotFoundError('Link not found!')
+        raise ItemizeLinkNotFoundError("Link not found!")
     await session.delete(link)
     await session.commit()

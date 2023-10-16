@@ -14,7 +14,7 @@ from typing import Annotated, AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/users/login')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -25,29 +25,35 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], session: DB) -> schemas.User:
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)], session: DB
+) -> schemas.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='Could not validate credentials',
+        detail="Could not validate credentials",
     )
 
     try:
-        payload = jwt.decode(token, CONFIG.JWT_SECRET, algorithms=[CONFIG.JWT_ALGORITHM])
-        user_id = payload.get('sub')
+        payload = jwt.decode(
+            token, CONFIG.JWT_SECRET, algorithms=[CONFIG.JWT_ALGORITHM]
+        )
+        user_id = payload.get("sub")
         if not isinstance(user_id, int):
             raise credentials_exception
         user = await session.get(models.User, user_id)
         if user is None:
             raise credentials_exception
         return await user.to_schema()
-    except:
+    except jwt.PyJWTError:
         raise credentials_exception
 
 
 CurrentUser = Annotated[schemas.User, Depends(get_current_user)]
 
 
-async def get_current_user_if_authenticated(request: Request, session: DB) -> schemas.User | None:
+async def get_current_user_if_authenticated(
+    request: Request, session: DB
+) -> schemas.User | None:
     try:
         token = await oauth2_scheme(request)
         if token is None:
@@ -57,14 +63,17 @@ async def get_current_user_if_authenticated(request: Request, session: DB) -> sc
         return None
 
 
-CurrentUserIfAuthenticated = Annotated[schemas.User | None, Depends(get_current_user_if_authenticated)]
+CurrentUserIfAuthenticated = Annotated[
+    schemas.User | None, Depends(get_current_user_if_authenticated)
+]
 
 
 async def match_username_slug(request: Request, user: CurrentUser):
-    if request.path_params['username'] != user.username:
+    if request.path_params["username"] != user.username:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail='You do not have permission to access this resource!',
+            detail="You do not have permission to access this resource!",
         )
+
 
 MatchUsernameSlug = Depends(match_username_slug)

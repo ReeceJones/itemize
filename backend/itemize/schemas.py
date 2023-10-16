@@ -53,7 +53,7 @@ class User(DBModel):
     email: str
     first_name: str
     last_name: str
-    itemizes: list['Itemize'] | None
+    itemizes: list["Itemize"] | None
 
 
 class Link(DBModel):
@@ -63,7 +63,7 @@ class Link(DBModel):
     page_metadata_override_id: int | None
     page_metadata: PageMetadata | None
     page_metadata_override: PageMetadataOverride | None
-    itemize: Optional['Itemize']
+    itemize: Optional["Itemize"]
 
 
 class Itemize(DBModel):
@@ -104,7 +104,7 @@ class CreateUserResponse(APIResponse):
 
 class Token(APIResponse):
     access_token: str
-    token_type: str = 'bearer'
+    token_type: str = "bearer"
 
 
 class PageMetadataRequest(APIRequest):
