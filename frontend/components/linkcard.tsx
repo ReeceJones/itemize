@@ -1,5 +1,5 @@
 'use client'
-import { Card, Image, Text, Stack, UnstyledButton, AspectRatio, Grid, GridCol, Button, Space, Flex, ActionIcon, Popover, PopoverTarget, PopoverDropdown, Alert, Modal, TextInput, NumberInput, Select } from "@mantine/core"
+import { Card, Image, Text, Stack, UnstyledButton, AspectRatio, Grid, GridCol, Button, Space, Flex, ActionIcon, Popover, PopoverTarget, PopoverDropdown, Alert, Modal, TextInput, NumberInput, Select, Box } from "@mantine/core"
 import { useHover, useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import Link from "next/link"
@@ -129,7 +129,13 @@ export default function LinkCard({link}: { link: ILink }) {
           <Grid>
             <GridCol span={2}>
               <AspectRatio ratio={1} mih={150}>
-                <Image src={link.page_metadata?.image?.url} alt={description}></Image>
+                {
+                  link.page_metadata?.image?.url ? (
+                    <Image src={link.page_metadata?.image?.url} alt={description}></Image>
+                  ) : (
+                    <Box h={150} bg="gray.2"/>
+                  )
+                }
               </AspectRatio>
             </GridCol>
 
@@ -141,7 +147,7 @@ export default function LinkCard({link}: { link: ILink }) {
                       site_name && (
                         <Text component="span" c="dimmed">{site_name}</Text>
                       )
-                    } {title}
+                    } {title || url}
                     </Text>
                   </GridCol>
                   <GridCol span={1}>
