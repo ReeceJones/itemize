@@ -1,5 +1,5 @@
 'use client'
-import { Card, Image, Text, Stack, UnstyledButton, AspectRatio, Grid, GridCol, Button, Space, Flex, ActionIcon, Popover, PopoverTarget, PopoverDropdown, Alert, Modal, TextInput, NumberInput, Select, Box } from "@mantine/core"
+import { Card, Image, Text, Stack, UnstyledButton, AspectRatio, Grid, GridCol, Button, Space, Flex, ActionIcon, Popover, PopoverTarget, PopoverDropdown, Alert, Modal, TextInput, NumberInput, Select, Box, FileButton } from "@mantine/core"
 import { useHover, useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import Link from "next/link"
@@ -187,10 +187,37 @@ export default function LinkCard({link}: { link: ILink }) {
         </Card>
       </UnstyledButton>
       <Modal title="Edit Link" opened={opened} onClose={close}>
-        <Image src={link.page_metadata?.image?.url} alt={description}></Image>
+        {/* <FileButton onChange={() => console.log('abc')} accept="image/png,image/jpeg">
+          {
+            (props) => (
+              <UnstyledButton w="100%" {...props}>
+                {
+                  link.page_metadata?.image?.url ? (
+                    <Image src={link.page_metadata?.image?.url} alt={description}></Image>
+                  ) : (
+                    <AspectRatio ratio={1}>
+                      <Box bg="gray.2"/>
+                    </AspectRatio>
+                  )
+                }
+              </UnstyledButton>
+            )
+          }
+        </FileButton> */}
+
+        {
+          link.page_metadata?.image?.url ? (
+            <Image src={link.page_metadata?.image?.url} alt={description}></Image>
+          ) : (
+            <AspectRatio ratio={1}>
+              <Box bg="gray.2"/>
+            </AspectRatio>
+          )
+        }
+
         <Space h={10}/>
-        {/* <FileButton onChange={setCustomImage} accept="image/png,image/jpeg">
-          {(props) => <Button {...props} fullWidth><IconFileUpload size={18}/> Upload Image</Button>}
+        {/* <FileButton onChange={() => console.log('abc')} accept="image/png,image/jpeg">
+          {(props) => <Button {...props} fullWidth> Upload Image</Button>}
         </FileButton> */}
         <Space h={10}/>
         <form onSubmit={form.onSubmit(updateLink)}>
