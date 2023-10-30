@@ -68,7 +68,7 @@ CurrentUserIfAuthenticated = Annotated[
 ]
 
 
-async def match_username_slug(request: Request, user: CurrentUser):
+async def match_username_slug(request: Request, user: CurrentUser) -> None:
     if request.path_params["username"] != user.username:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -167,6 +167,8 @@ class MetadataParser:
         value = properties.get(key, None)
         if value is None:
             return None
+        if key == "image" and isinstance(value, list) and len(value) > 0:
+            return str(value[0])
         return str(value)
 
     def _microdata_get(self, key: str) -> str | None:
@@ -354,6 +356,7 @@ async def save_metadata(
             await session.commit()
             await session.refresh(metadata, ["image"])
     elif metadata.image_url is not None:
+        print(f"{metadata.image_url=}")
         async with httpx.AsyncClient(follow_redirects=True) as client:
             user_agent_header = fake_useragent.UserAgent().random
             response = await client.get(
