@@ -151,25 +151,26 @@ class MetadataParser:
             "currency": "Product",
             "site_name": "Organization",
         }
-        properties = next(
+        properties = list(
             filter(
-                lambda x: x["@type"] == key_types.get(key, "Product"),
+                lambda x: x.get("@type") == key_types.get(key, "Product"),
                 self._metadata["json-ld"],
-            ),
-            None,
+            )
         )
-        if properties is None:
+        if len(properties) == 0:
             return None
 
         if key in key_translations:
             key = key_translations[key]
 
-        value = properties.get(key, None)
-        if value is None:
-            return None
-        if key == "image" and isinstance(value, list) and len(value) > 0:
-            return str(value[0])
-        return str(value)
+        for prop in properties:
+            value = prop.get(key, None)
+            if value is None:
+                continue
+            if key == "image" and isinstance(value, list) and len(value) > 0:
+                return str(value[0])
+            return str(value)
+        return None
 
     def _microdata_get(self, key: str) -> str | None:
         """
